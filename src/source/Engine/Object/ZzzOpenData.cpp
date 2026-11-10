@@ -40,6 +40,7 @@
 #include "Data/DataHandler/LookData/LookDataHandler.h"
 #include "Data/DataHandler/MonsterData/MonsterDataHandler.h"
 #include "Data/DataHandler/MonsterData/MonsterModelLoader.h"
+#include "Data/DataHandler/BuffData/BuffStorage.h"
 #include "Data/DataHandler/MapData/MapObjectSoundStorage.h"
 #include "Data/DataHandler/SoundData/SoundEventStorage.h"
 #include "Data/DataHandler/SoundData/SoundFileStorage.h"
@@ -420,6 +421,17 @@ static void OpenMapData()
     }
 }
 
+// Loads the buffs (Data/Buffs/Buffs.json): their names, texts and the buff
+// strip's rules; errors stop the game.
+static void OpenBuffData()
+{
+    std::string errorMessage;
+    if (!Data::Buffs::LoadBuffs(errorMessage))
+    {
+        StopOnDataError("Buff data error", errorMessage);
+    }
+}
+
 // Loads the effect types (Data/Effects) and builds the effect registry from
 // their creation values; errors stop the game.
 // Reads the model file table (Data/Models/ModelFiles.json, MU_DATA_OVERLAY
@@ -662,6 +674,9 @@ void DeleteMonsters()
 
     // The model sounds without a SOUND_* id; their models load them again.
     Audio::SoundNumbers::ReleaseAll();
+
+    // A missing model file is tried once a map (Q-MN45c).
+    Data::Monsters::ModelLoader::ForgetMissingFiles();
 }
 
 // Opens a monster model from its entry in the model list
@@ -2158,6 +2173,7 @@ void OpenBasicData(HDC hDC)
 
     OpenMonsterData();
     OpenMapData();
+    OpenBuffData();
 
     mu_swprintf(Text, L"Data\\Local\\%ls\\Quest_%ls.bmd", g_strSelectedML.c_str(), g_strSelectedML.c_str());
     g_csQuest.OpenQuestScript(Text);

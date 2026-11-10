@@ -30,6 +30,7 @@
 #include "Data/DataHandler/ItemData/ItemDataHandler.h"
 #include "Data/DataHandler/MonsterData/MonsterDataHandler.h"
 #include "GameLogic/Monsters/MonsterNames.h"
+#include "World/GameMaps/MonsterSpawnWorld.h"
 #include "Data/GameConfig/GameConfig.h"
 #include "UI/Core/UIManager.h"
 #include "Render/Textures/ZzzOpenglUtil.h"
@@ -1411,6 +1412,17 @@ SDL_WindowID ActionWindowId(const SDL_Event& event)
     }
 }
 
+// A right press consumed by the UI still reaches the game when it targets a party card (casting a
+// support skill on that member), and a right release does while the game holds the button, so it can't stick.
+bool PassesRightButtonToGame(const SDL_Event& event)
+{
+    if (event.button.button != SDL_BUTTON_RIGHT)
+        return false;
+    if (event.type == SDL_EVENT_MOUSE_BUTTON_UP)
+        return MouseRButton;
+    return g_pPartyListWindow && g_pPartyListWindow->IsCardHoveredForMemberSkill();
+}
+
 // Physical and scripted input share UI-first routing. Scripted input owns its
 // own legacy held state; it never acquires the OS pointer or replays SDL events.
 bool RouteActionInput(SDL_Event& event, bool synthetic, bool& propagates)
@@ -1430,7 +1442,7 @@ bool RouteActionInput(SDL_Event& event, bool synthetic, bool& propagates)
     case SDL_EVENT_MOUSE_BUTTON_UP:
         if (!synthetic && event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
             Core::Input::Synthetic::CancelForPhysicalButton(event.button.button);
-        propagates = Core::Input::RouteToUi(event, g_sdlWindow);
+        propagates = Core::Input::RouteToUi(event, g_sdlWindow) || PassesRightButtonToGame(event);
         if (propagates && !synthetic)
             HandleMouseButton(event);
         return true;
@@ -2325,6 +2337,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nC
     Core::Log::ReadingLanguage::Write(CurrentReadingLanguage());
     I18N::RegisterLocaleObserver(&LogUiLanguageChange, nullptr);
     g_MonsterDataHandler.SetNamesChangedCallback(&GameLogic::Monsters::Names::RefreshShownNames);
+    g_MonsterDataHandler.SetMonstersChangedCallback(&World::Monsters::ApplyLiveSetup);
 
 #ifdef _EDITOR
     // Initialize MU Editor with the live SDL GPU window.

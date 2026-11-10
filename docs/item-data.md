@@ -19,10 +19,11 @@ fields, so it can be exchanged with the server (see [Item Sync](#item-sync)).
 | `Stats/ItemStats.json` | What the + level, excellent options, ancient sets and option level add to the stats and requirements; see [Item stats by level](#item-stats-by-level) |
 | `Tooltips/Tooltip.json` | The item tooltip's shared texts and layouts: which stat and requirement lines a tooltip shows; see [Tooltip layouts](#tooltip-layouts) |
 | `Tooltips/GroundLabels.json` | The looks of the item names on the ground: the label styles and the standard rules; see [Ground labels](#ground-labels) |
+| `Tooltips/NameCases.json` | The cases each language declines item names in, for texts that name items with a case; see [Name forms](#name-forms) |
 | `Options/*.json` | The option definitions, one file per option group (luck so far); see [Item options](#item-options) |
 | `Options/OptionRules.json` | Not read by the game: which option definitions an item's data gives it, for the editor; see [Option rules](#option-rules) |
 | `Tooltips/OptionTexts.json` | The texts of the options' tooltip lines; see [Item options](#item-options) |
-| `Sync/KnownDifferences.json` | Not read by the game: the differences from the server that MuEditor's Item Sync leaves unchecked; see [Item Sync](#item-sync) |
+| `Sync/KnownDifferences.json` | Not read by the game: the differences from the server that MuEditor's Item Sync marks as wrong in the client or wrong in the server; see [Item Sync](#item-sync) |
 
 The file name is only a convention; the group comes from the file content.
 
@@ -95,6 +96,32 @@ read as the English name only; saving writes the object form.
 - Logs always use the English name and the item id, e.g.
   `Short Sword (0,1)`, never a translation.
 
+#### Name forms
+
+Texts can name an item by its number, `{item:14,25}` (see
+[Texts that name items](translation-system.md#texts-that-name-items)). In a
+language that declines names a text can ask for a form, `{item:14,25:acc}`,
+and the item gives it in `nameForms`, after `name`:
+
+```json
+"name": { "en": "Tear of Elf", "de": "Träne der Elfe", "pl": "Łza Elfa" },
+"nameForms": { "pl": { "gen": "Łzy Elfa", "acc": "Łzę Elfa" } },
+```
+
+A name line with a text (a name at a level, written in place or a shared text,
+`"@x"`) has its forms after its `text`; a line written as `{name}` uses the
+item's. The cases are `gen`, `dat`,
+`acc`, `ins` and `loc`; `Tooltips/NameCases.json` gives the ones each language
+uses:
+
+```json
+{ "formatVersion": 1, "languages": { "de": ["gen", "dat", "acc"], "pl": ["gen", "dat", "acc", "ins", "loc"] } }
+```
+
+A missing form shows the name itself. Forms in English, in a language or case
+the file does not give, or in a language the name has no text of its own in are
+never shown; loading warns about them. Item Translations edits the forms.
+
 ### MU Helper pickup filters
 
 **Pick All** collects every eligible drop. **Selected** applies the enabled
@@ -131,6 +158,7 @@ variants or option words. An online keyword need not select the same items offli
 | Field | Meaning |
 |---|---|
 | `tags` | Categories the game code asks for, e.g. `["mount", "flying"]`; see [Tags](#tags) |
+| `nameForms` | Forms of the name for texts that ask for a case, per language: `{"pl": {"acc": "Łzę Elfa"}}`; see [Name forms](#name-forms). A client-only field; the bmd import keeps it |
 | `levelValues` | Values of the description's own placeholders, one per item level from +0: `{"stat": ["ENG", "STA", ...]}` makes `{stat}` "ENG" at +0 and "STA" at +1. Each value is a text with its translations (written like `name`) or a shared text (`"@name"`), without placeholders. A line that shows one is shown only at levels that have a value. The Fruits' `{stat}` is one. A client-only field; the bmd import keeps it |
 | `description` | Lines the tooltip shows for the item, e.g. the Jewel of Bless's "It is used to increase your item level up to 6"; see [Descriptions](#descriptions). A client-only field; the bmd import keeps it |
 | `nameLines` | How the game names the item (its tooltip, the repair window, windows, messages and ground labels) and the tooltip's name color, when not the standard name and color (see [Name lines](#name-lines)). Each is written like a `description` line without `bold` and `after` (the name is always bold and first), its text is checked like one, and its `text` and `color` may be left out. Name lines are in the item names' language (English with the options' "Translate item names" off), and a text that is empty in it keeps the standard name. A client-only field; the bmd import keeps it |
@@ -177,7 +205,7 @@ can have several tags; the file lists them in the order below.
 | `guardianPet` | Demon and Spirit of Guardian |
 | `pandaOrSkeleton` | The panda and skeleton pets and transformation rings |
 | `transformationRing` | Rings that change the character's look: a second one cannot be dragged onto a ring slot, the Kanturu entry and `/move` to Icarus refuse them, and the move window offers no Icarus with one that is not the panda or skeleton ring |
-| `jewel` | Jewels of Bless, Soul, Life, Chaos, Creation and Guardian |
+| `jewel` | Jewels of Bless, Soul, Life, Chaos, Creation and Guardian, and the ten bundles of jewels and stones (Lahap's): they play the jewel sound when picked up or dropped by a monster, and MU Helper's Jewel/Gem option picks them up |
 | `refineStone` | Lower and Higher Refine Stone |
 | `socketSeed`, `socketSphere`, `socketSeedSphere` | Socket system items |
 | `healingPotion`, `manaPotion`, `complexPotion`, `shieldPotion` | Potions the hotkeys look for; a skill without enough mana takes a mana potion and the MU Helper a healing potion. They take the one with the highest `potionPriority` first, then the highest group and number |
@@ -593,6 +621,12 @@ by that value for the hovered item, e.g.
 have no braces of their own, so every brace belongs to a placeholder. A
 placeholder is one of:
 
+- an **item**, `{item:14,113}` (with `+level` and `:case`): its name in the item
+  name language, which follows Translate item names while the rest of the text
+  stays in the UI language
+  ([Texts that name items](translation-system.md#texts-that-name-items)). A
+  translation names the same items as the English text, its case may differ;
+
 - a **built-in value**, by its name: `{level}`, the item's + level, or a value of the tooltip's stat
   lines, as the game computes them for the item and the hero:
   `damageMin`, `damageMax` (with the Jewel of Harmony's attack bonus; a skill
@@ -929,9 +963,9 @@ at a time.
   list in their order.
 
 What an option does in the client is code, by its type, attribute and way
-of adding: luck's option fills the item's luck slot, which the price and
-the mixes count as before, with the value 0, so the client adds no
-critical damage rate for luck (the server adds the 5 %). An attribute the
+of adding: luck's option fills the item's luck slot with its value, which
+the price and the mixes count as before and the character window adds up
+into the [critical damage rate](#critical-damage-rate). An attribute the
 client does not compute still shows its lines and adds nothing.
 
 `Tooltips/OptionTexts.json` holds the lines' texts:
@@ -950,6 +984,68 @@ client does not compute still shows its lines and adds nothing.
 
 `{value}` is the option's value at the item's level (luck's is 5). The
 lines are in the UI's language, English where a text has no translation.
+
+### Critical damage rate
+
+The character window shows the critical damage rate under the strength's
+lines: the chance that a hit is critical, which deals the maximum damage. The
+server rolls it (OpenMU's `CriticalDamageChance`), and the client adds it up
+the same way to show it:
+
+| Part | Adds |
+|---|---|
+| Luck | The luck option's value (`Options/Luck.json`: 5 %) for each worn item with luck, while the item is not broken and the hero meets its requirements |
+| Set options | The active ancient set options "Increase critical damage rate" (the full Warrior set: 5 %) |
+| Socket options | The seed spheres' option "Critical damage rate" (Lightning: 8 % to 12 % by sphere level), while the item is not broken |
+| Own buff | While it is on: the Wizard's Expansion of Wizardry Mastery or the Dark Lord's Critical Damage Increase with its third power-up. It adds the value of that master skill, as the server sends it with the master skill tree |
+| Scroll of Battle | While its buff is on: 20 % (OpenMU's buff items) |
+
+No stat changes the rate; stats only change how much a critical hit adds
+(the Dark Lord's Critical Damage Increase). The line shows what the worn
+items add, in the window's colour for items once it is above 0, and what the
+buff adds in brackets, in the colour for buffs: `Critical damage rate: 33%
+(+9%)`. With the pointer over it, the window lists each part above 0 and the
+total; the Scroll of Battle counts with the buffs.
+
+The client can't tell who cast a buff. A buff counts as the hero's own when
+the hero has its skill (for the rate, its master skill), and then with the
+hero's own values; a buff from a party member who has other values is shown
+with the hero's, and a buff the hero can't cast isn't counted, since its
+value comes from the caster's master skill.
+
+Luck and the other options count while the hero meets the item's
+requirements, as everywhere in the client. OpenMU counts every worn item that
+is not broken, so the two differ while the hero wears an item whose
+requirements a lost stat bonus (a set's, a buff's) no longer meets.
+
+The original client had a sum of the luck slots' values, but nothing called
+it, nothing showed it, and luck's value in the slot was 0.
+
+The damage line above it has a hint too, with what a hit deals before the
+target's defense: a normal hit (the line's range), a critical hit (the
+maximum plus the critical damage bonus) and an excellent hit (the maximum
+× 1.2, plus the excellent damage bonus and the critical damage bonus). When
+something adds to the critical damage bonus, the hint lists each part above 0
+and their total:
+
+| Part | Adds to every critical hit |
+|---|---|
+| Set options | The active ancient set options "Increase critical damage" (the Cloud set: 50) |
+| Harmony options | A weapon's or staff's harmony option "Increase critical damage", while the item's level reaches the option's level |
+| Socket options | The seed spheres' option "Critical damage" (Lightning: 30 to 50 by sphere level in the client's data; OpenMU has 15 to 40, a known difference), while the item is not broken |
+| Own buff | While it is on: the Dark Lord's Increase Critical Damage, 1 per 30 energy and 1 per 25 command, plus its first power-up's value. The damage line takes the colour for buffs meanwhile |
+
+The excellent damage bonus comes from ancient set options and seed spheres.
+
+A broken socket item adds none of its seed spheres, as on the server: not
+these parts, and not its other socket options and socket set bonus either
+(damage, defense, attack speed, skill damage, the stat bonuses). A stat bonus
+lost that way can also leave another worn item's requirements unmet, and then
+that item's options stop counting too.
+
+As with the rate, the buff counts when the hero has the skill, with the
+hero's energy and command; a buff from a party member is counted only that
+way, since its value comes from that member's energy and command.
 
 ### Option rules
 
@@ -1479,6 +1575,10 @@ shows it in the others.
     model the game has opened), so the item keeps its looks.
   - **Remove item**: the item and its model entry.
 
+  Both list what uses the item by its number and stays there: the game data,
+  the code and the texts that name it (`{item:14,13}`), which then name
+  whatever takes the number.
+
   An entry without a name moves and is removed as an item is; there is
   nothing to duplicate.
 
@@ -1492,7 +1592,19 @@ shows it in the others.
   model entry and the shared model it names) and what uses it by its
   number and stays there: the source lines that name it (read from the
   sources the editor was built from; without them that part is not known)
-  and an ancient set, add option, buff or pet of the game data.
+  and an ancient set, add option, buff or pet of the game data, and the
+  monsters that wear it, with their places ("Monster 163 Chaos Castle Elf
+  wears it: weapons[0], weapons[1] (random look 1)"; see
+  [monster-data.md](monster-data.md)).
+
+  Monsters name an item by its number in their equipment, so the move
+  asks: **Move and update them** makes them name the new number too, in
+  the same undo step as the move; **Move only** leaves them at the old
+  number, where they wear nothing, and Data Checks lists them as errors
+  until another item is picked for them. Removing an item says the same of
+  its wearers. Save Items writes the references a move changed into
+  `Data/Monsters/Monsters.json` as it was last saved, with the item files
+  (all or none); the monster tools' other unsaved changes stay theirs.
 - **Item Basics**: the English name, size, slot and wing tier (*None* for
   none), two-handed, weapon kind (*By the group* takes the kind the item's
   group gives, which then follows its group, slot and classes), skill, drop
@@ -1952,8 +2064,8 @@ phase 7; see the
   Changed, Removed under "From A to B", the values under "File A" and
   "File B"; an item only file A has lists file A's values), in every
   language, also one only one file has. An item a file has twice is a
-  locked row that names that file. Nothing can be applied, but a row can be
-  marked as a known difference. An import or a comparison of two files
+  locked row that names that file. Nothing can be applied or marked (the
+  marks are about the client and the server). An import or a comparison of two files
   replaces the other in the window.
 - An import lists only what differs. The lists say how much of what was
   compared differs ("Items that differ (3 of 911)"), and when nothing does,
@@ -2046,8 +2158,9 @@ number, fields with their default value left out, LF line endings.
   `profiles.scroll.requirements.energy`, …) and a profile only one side
   has. A file without formulas compares none and leaves the client's as
   they are.
-- Checked at first: what the file changes. Unchecked: removals (also of
-  a formula entry only the client has), known differences (grey) and
+- Checked at first: what the file changes, and what is marked wrong in the
+  client. Unchecked: removals (also of
+  a formula entry only the client has), what is marked wrong in the server (grey) and
   fields with a note: the size and slot of an
   item your character wears or an item window shows (they stay; such an
   item is not removed either, nor added when the client has no data for it
@@ -2058,8 +2171,12 @@ number, fields with their default value left out, LF line endings.
   unchecks one field in every changed item.
 - **Copy as Markdown** on a list's header copies the list (also a folded
   one) as a Markdown table in English: each item's group, number and name,
-  for the items that differ also the change and the number of fields. Paste
-  it into an issue, e.g. one asking OpenMU for the items it lacks.
+  for the items that differ also the change and the number of fields, and
+  the side marked wrong (*Client* or *Server*: the whole item's mark, or the
+  one all its fields have; empty otherwise; not for a comparison of two
+  files, which has no marks). Paste
+  it into an issue, e.g. one asking OpenMU for the items it lacks or to fix
+  the items marked wrong in the server.
 - **Names**: only the client's UI languages are taken from the file; a
   language the file lacks stays as it is, and no language is removed.
 - **Stat profile**: a file's profile that the item's profile rules give
@@ -2087,25 +2204,58 @@ number, fields with their default value left out, LF line endings.
   a save. With fatal problems nothing changes; they are listed and the rows
   of their items are unchecked.
 
-**Known differences** are fields and formula entries meant to differ
-between the client and the server. Ticking **Known** on a field, on an
-added or removed item or on a formula entry leaves it unchecked and grey in
-every comparison. They are kept in `Data/Items/Sync/KnownDifferences.json`
-next to the game, written when one is ticked; copy it to
+**Wrong in client** and **Wrong in server** say which side of a
+difference is wrong. Every list of an import has the two buttons: the item lists for an
+item as a whole (on a changed item: every field without a mark of its own,
+also one that differs only later), the fields of a changed item for one
+field, and the Formulas list for an entry. Marking a changed item as a
+whole takes out its fields' own marks (a new or removed item's mark stays,
+and the other way round); a field's own mark counts for that field
+instead of the item's, which stays for the others. A field shows its
+item's mark faint; it is changed on the item's row. While some fields have
+their own mark of the other side, the item's row shows its mark faint too;
+a click on a side there marks every field with it. At most one of
+them is selected; clicking the selected one again clears it, and the row
+starts as without a mark. *Wrong in client* only marks the difference: it
+leaves its box as it is, so whether Apply takes the server's value stays
+your choice; *Wrong in server* unchecks it and shows it
+grey, so the client keeps its value (checking it by hand applies it after
+all, and it is no longer grey; clearing the mark or switching to *Wrong in
+client* gives the box its default back, as a new comparison starts it). A locked field or item, and a drop level OpenMU cannot
+keep, start unchecked either way (the drop level's box still takes it). The marks count in every comparison, also after a
+new download. Apply takes out the marks of what it applied, either side's
+(on a changed item marked as a whole, once all its fields were applied):
+the client has the server's value then. An applied removal takes every
+mark of the item, so a number used again later starts without one. They are kept in `Data/Items/Sync/KnownDifferences.json`
+next to the game, read when the Item Sync window opens and written on
+every click (not while it has an entry that cannot be read: fix or remove
+the file, then close the window and open it again); copy it to
 `src/bin/Data/Items/Sync` with the item files to share it. `""` stands for
-the whole item:
+a new or removed item as a whole, `"*"` for a changed one (every field
+without a mark of its own). They are kept apart: a mark of an item only
+one side has says nothing about its values once both sides have it.
 
 ```json
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "items": [
-    {"group": 13, "number": 4, "fields": ["", "repairable"]}
+    {"group": 13, "number": 4, "wrongInServer": [""]},
+    {"group": 13, "number": 39, "wrongInClient": ["repairable"], "wrongInServer": ["*"]},
+    {"group": 13, "number": 50, "wrongInClient": ["height"], "wrongInServer": ["width"]}
   ],
-  "formulas": [
-    "default.requirements.leadership"
-  ]
+  "formulas": {
+    "wrongInClient": [],
+    "wrongInServer": [
+      "default.requirements.leadership"
+    ]
+  }
 }
 ```
+
+A file of format version 1, from before the two buttons, lists the
+differences that were ticked **Known** (`"fields"`, and `"formulas"` as a
+list); they read as wrong in the server, as the client kept its value.
+The next click writes version 2.
 
 ### Import from bmd / Export as bmd
 
